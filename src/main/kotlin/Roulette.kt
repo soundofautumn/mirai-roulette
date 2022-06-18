@@ -15,10 +15,23 @@ import net.mamoe.mirai.message.data.MessageChainBuilder
 import net.mamoe.mirai.message.data.PlainText
 
 data class GroupRouletteData(
-    var isStarted: Boolean = false,
-    var progress: Int = 0,
-    val shotList: List<Boolean> = arrayListOf(true, false, false, false, false, false).shuffled()
-)
+    private var bulletCount: Int,
+) {
+    init {
+        if (bulletCount !in (1..6)) bulletCount = 1
+    }
+
+    private val originShotList = arrayOf(
+        listOf(true, false, false, false, false, false),
+        listOf(true, true, false, false, false, false),
+        listOf(true, true, true, false, false, false),
+        listOf(true, true, true, true, false, false),
+        listOf(true, true, true, true, true, false),
+        listOf(true, true, true, true, true, true),
+    )
+    var progress: Int = 0
+    val shotList = originShotList[bulletCount - 1].shuffled()
+}
 
 object RouletteConfig : AutoSavePluginConfig("roulette") {
     val botName: String by value()
@@ -56,10 +69,14 @@ object Roulette : KotlinPlugin(
         RouletteConfig.reload()
         init()
         GlobalEventChannel.filterIsInstance<GroupMessageEvent>()
-            .filter { it.message.contentToString() == RouletteConfig.botName.ifEmpty { it.bot.nameCardOrNick } + "轮盘" }
+            .filter {
+                it.message.contentToString().startsWith(RouletteConfig.botName.ifEmpty { it.bot.nameCardOrNick } + "轮盘")
+            }
             .subscribeAlways<GroupMessageEvent> {
+                val lastChar = it.message.contentToString().trim().last()
+                val bulletCount: Int = if (lastChar.isDigit()) lastChar.toString().toInt() else 1
                 if (!dataMap.containsKey(it.group.id)) {
-                    dataMap[it.group.id] = GroupRouletteData()
+                    dataMap[it.group.id] = GroupRouletteData(bulletCount)
                     it.group.sendMessage(RouletteConfig.quotations[5].getMessageWithAt(it.sender))
                 }
             }
@@ -68,8 +85,7 @@ object Roulette : KotlinPlugin(
             .filter { dataMap.containsKey(it.group.id) }
             .subscribeAlways<GroupMessageEvent> {
                 val data = dataMap[it.group.id]!!
-                data.progress++
-                if (data.shotList[data.progress - 1]) {
+                if (data.shotList[data.progress]) {
                     if ((1..100).random() <= 5) {
                         it.group.sendMessage(RouletteConfig.quotations[6].getMessageWithAt(it.sender))
                     } else {
@@ -82,8 +98,9 @@ object Roulette : KotlinPlugin(
                     }
                     dataMap.remove(it.group.id)
                 } else {
-                    it.group.sendMessage(RouletteConfig.quotations[data.progress - 1].getMessageWithAt(it.sender) + "(${data.progress}/6)")
+                    it.group.sendMessage(RouletteConfig.quotations[data.progress].getMessageWithAt(it.sender) + "(${data.progress + 1}/6)")
                 }
+                data.progress++
             }
     }
 
