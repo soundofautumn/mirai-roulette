@@ -49,7 +49,7 @@ enum class RouletteType(val OperateName: String, val introduction: String) {
 object Roulette : KotlinPlugin(
     JvmPluginDescription(
         id = "per.autumn.mirai.roulette",
-        version = "1.1.0",
+        version = "1.1.1",
     )
 ) {
     //使用 groupId 作为 key 储存数据
