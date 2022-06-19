@@ -99,7 +99,8 @@ object Roulette : KotlinPlugin(
             .filter { !dataMap.containsKey(it.group.id) }
             .subscribeAlways<GroupMessageEvent> {
                 val lastChar = it.message.contentToString().trim().last()
-                val bulletCount: Int = if (lastChar.isDigit()) lastChar.toString().toInt() else 1
+                val bulletCount: Int =
+                    if (lastChar.isDigit() && lastChar.toString().toInt() in (1..6)) lastChar.toString().toInt() else 1
                 dataMap[it.group.id] = GroupRouletteData(bulletCount)
                 it.group.sendMessage(
                     RouletteConfig.quotations[5].replace(
@@ -129,7 +130,7 @@ object Roulette : KotlinPlugin(
                     replyMsg = if ((1..100).random() <= 5) {
                         RouletteConfig.quotations[6]
                     } else {
-                        if (it.group.botPermission.isOperator()) {
+                        if (it.group.botPermission.level > it.sender.permission.level) {
                             when (rouletteType) {
                                 RouletteType.MUTE -> it.sender.mute((1..20).random() * 60)
                                 RouletteType.KICK -> (it.sender as NormalMember).kick("")
@@ -167,7 +168,7 @@ object Roulette : KotlinPlugin(
             this.split("@").let {
                 MessageChainBuilder().append(it[0]).also { builder ->
                     for (i in (1 until it.size)) {
-                        builder.append(At(target)).append(it[i])
+                        builder.append(At(target)).append(" ").append(it[i])
                     }
                 }.build()
             }
